@@ -38,3 +38,35 @@ export async function POST(req) {
   await log(u.id, 'create_scholarship', { scholarshipId: id });
   return NextResponse.json({ ok: true, id });
 }
+
+export async function GET() {
+  if (!me(['reviewer', 'admin'])) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const { rows } = await pool.query('SELECT scholarship_id, title, amount, total_budget, seats, deadline FROM scholarships ORDER BY scholarship_id');
+  return NextResponse.json(rows);
+}
+
+export async function PUT(req) {
+  const u = me(['reviewer', 'admin']);
+  if (!u) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const b = await req.json();
+  try {
+    await pool.query('UPDATE scholarships SET amount=$1, seats=$2, deadline=$3 WHERE scholarship_id=$4', [b.amount, b.seats, b.deadline, b.scholarship_id]);
+    await log(u.id, 'update_scholarship', { scholarshipId: b.scholarship_id });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return NextResponse.json({ error: e.message }, { status: 400 });
+  }
+}
+
+export async function DELETE(req) {
+  const u = me(['reviewer', 'admin']);
+  if (!u) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const b = await req.json();
+  try {
+    await pool.query('DELETE FROM scholarships WHERE scholarship_id=$1', [b.scholarship_id]);
+    await log(u.id, 'delete_scholarship', { scholarshipId: b.scholarship_id });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return NextResponse.json({ error: e.message }, { status: 400 });
+  }
+}
